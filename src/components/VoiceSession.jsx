@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const SPELL_DELAY_MS = 2000;
+const SPELL_DELAY_MS = 500; // brief pause after question before spelling starts
 
 function buildSystemPrompt(items) {
   const itemList = items.map((item, i) =>
@@ -13,12 +13,12 @@ ${itemList}
 
 YOUR ROLE:
 - Keep responses to 1-2 sentences. Sound like a person, not a robot.
-- Start with a brief intro — tell the learner that after each question, if they pause, you'll begin spelling out the answer letter by letter as a hint. Keep the intro to one sentence.
+- Start with a brief intro — tell the learner that after each question you'll immediately start spelling the answer letter by letter, and they can jump in any time with their answer.
 - Then ask Question 1.
-- When the learner answers correctly, affirm them warmly and move to the next question.
-- When they're close, acknowledge what they got right and give a short nudge.
-- When they're wrong, encourage them to try again.
-- When asked by the system to spell, spell each letter slowly and clearly with a pause between each — e.g. "V... O... L... T... A... G... E" — then say the full word once.
+- When the learner interrupts with the correct answer, affirm them warmly and move to the next question.
+- When they're close, acknowledge what they got right and give a short nudge, then the system will restart the spelling.
+- When they're wrong, tell them kindly and the system will restart the spelling for them.
+- When asked by the system to spell, spell each letter slowly and clearly — e.g. "V... O... L... T... A... G... E" — then say the full word once.
 - After all questions, wrap up warmly and tell them how many they got right.`;
 }
 
@@ -39,11 +39,10 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
   const streamRef     = useRef(null);
   const audioElRef    = useRef(null);
   const statusRef     = useRef('idle');
-  const spellTimerRef   = useRef(null);
-  const spellingRef     = useRef(false); // suppress transcript during spelling turn
+  const spellTimerRef    = useRef(null);
+  const spellingRef      = useRef(false); // suppress transcript during spelling turn
   const askedQuestionRef = useRef(false); // was the last AI turn a question
-  const currentQRef   = useRef(0);     // index of current question
-  const userSpoke     = useRef(false); // did user speak since last AI turn ended
+  const currentQRef      = useRef(0);     // index of current question
 
   const addLine = useCallback((role, text) => {
     setTranscript(t => [...t, { role, text }]);
@@ -76,11 +75,7 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
 
   function scheduleSpelling() {
     clearSpellTimer();
-    userSpoke.current = false;
-    spellTimerRef.current = setTimeout(() => {
-      // Only spell if user hasn't spoken since AI finished
-      if (!userSpoke.current) triggerSpelling();
-    }, SPELL_DELAY_MS);
+    spellTimerRef.current = setTimeout(triggerSpelling, SPELL_DELAY_MS);
   }
 
   function setupAudio(stream) {
@@ -112,7 +107,6 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
     setTranscript([]);
     setSpelling(false);
     currentQRef.current = 0;
-    userSpoke.current = false;
     askedQuestionRef.current = false;
 
     try {
@@ -199,10 +193,10 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
   function handleEvent(event) {
     switch (event.type) {
       case 'input_audio_buffer.speech_started':
-        // User started speaking — cancel any pending spell timer
-        userSpoke.current = true;
+        // User interrupted — cancel any pending spell trigger
         clearSpellTimer();
         setSpelling(false);
+        spellingRef.current = false;
         setUserSpeaking(true);
         break;
       case 'input_audio_buffer.speech_stopped':
@@ -212,8 +206,10 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
         setAiSpeaking(true);
         break;
       case 'response.output_audio.done':
-        // Only start spell countdown if the AI just asked a question
         setAiSpeaking(false);
+        break;
+      case 'response.done':
+        // Full response complete — arm spelling if last turn was a question
         if (askedQuestionRef.current) scheduleSpelling();
         break;
       case 'conversation.item.input_audio_transcription.completed':
@@ -221,19 +217,19 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
         break;
       case 'response.output_audio_transcript.done': {
         const text = event.transcript?.trim() ?? '';
-        // Don't show the spelled answer in the transcript
         if (text && !spellingRef.current) addLine('assistant', text);
         spellingRef.current = false;
         const lower = text.toLowerCase();
-        // Mark whether this turn was a question (so audio.done knows to arm the timer)
         askedQuestionRef.current = text.includes('?');
-        // Detect correct answer / question advance → reset spelling state and advance question index
         if (lower.includes('next question') || lower.includes('moving on') ||
             lower.includes("that's right") || lower.includes('correct') ||
             lower.includes('well done') || lower.includes('exactly')) {
+          // Correct — advance question, spelling will re-arm on next response.done
           setSpelling(false);
-          askedQuestionRef.current = false;
           currentQRef.current = Math.min(currentQRef.current + 1, items.length - 1);
+        } else if (!text.includes('?')) {
+          // AI responded to a wrong answer — restart spelling immediately
+          scheduleSpelling();
         }
         break;
       }
@@ -271,7 +267,7 @@ export default function VoiceSession({ items, onFinish, onRestart }) {
         {status === 'idle' && (
           <div className="voice-idle">
             <p className="instruction">
-              The AI asks you each question out loud. If you pause, it will start spelling the answer letter by letter — jump in any time you remember.
+              The AI asks each question then immediately starts spelling the answer letter by letter. Jump in any time — if you get it wrong, it restarts the spelling.
             </p>
             <button className="primary" onClick={connect}>
               Start voice session <span>↗</span>
