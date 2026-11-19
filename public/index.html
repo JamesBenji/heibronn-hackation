@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f3eb">
+  <title>Recall — a gentler way to remember</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/" aria-label="Recall home"><span class="brand-mark">◒</span> recall<span class="brand-dot">.</span></a><span class="top-note">A little help, right when you need it.</span></header>
+  <main>
+    <section id="setup" class="stage">
+      <div class="eyebrow">LEARN WHAT STAYS WITH YOU <span>✳</span> NO ACCOUNT NEEDED</div>
+      <h1>Remember it<br><em>your way.</em></h1>
+      <p class="intro">Bring something you’ve already studied. We’ll turn it into a few questions and gently reveal the answers while you work them out.</p>
+      <div class="panel source-panel">
+        <div class="panel-heading"><span class="step-number">01</span><div><h2>Your study material</h2><p>Paste a passage or choose a plain-text file.</p></div></div>
+        <label for="source" class="sr-only">Study material</label>
+        <textarea id="source" placeholder="Paste something you've already read or studied…" maxlength="40000"></textarea>
+        <div class="source-actions"><label class="file-button" for="file">↥ &nbsp; Upload .txt or .md</label><input id="file" type="file" accept=".txt,.md,text/plain,text/markdown"><span id="count">0 / 40,000 characters</span></div>
+      </div>
+      <div class="start-row"><button id="generate" class="primary">Make my questions <span>↗</span></button><button id="demo" class="text-button">Try the sample <span>→</span></button></div>
+      <p class="hint">Use this to refresh knowledge you’ve covered before. Your passage is sent to the configured AI service to create questions.</p>
+      <p id="setup-error" class="error" role="alert" hidden></p>
+    </section>
+
+    <section id="review" class="stage" hidden>
+      <div class="eyebrow">YOUR REVIEW SET <span>✳</span> EDIT THE LINEUP</div>
+      <h1>Pick what’s<br><em>worth a revisit.</em></h1>
+      <p class="intro">Each question is tied to a passage from your material. Remove any that don’t feel useful.</p>
+      <div id="item-list" class="item-list"></div>
+      <div class="start-row"><button id="begin" class="primary">Begin recalling <span>↗</span></button><button class="text-button restart">Start over <span>→</span></button></div>
+    </section>
+
+    <section id="session" class="stage" hidden>
+      <div class="session-head"><div class="eyebrow" id="progress">QUESTION 1 OF 3</div><button class="text-button restart">End session <span>×</span></button></div>
+      <div class="session-card">
+        <span class="card-label">BRING IT TO MIND</span>
+        <h1 id="question" class="question"></h1>
+        <p class="instruction">Try answering from memory. The answer will gradually come into view below.</p>
+        <div class="reveal-box"><div class="reveal-heading"><span>THE ANSWER, COMING INTO FOCUS</span><span id="reveal-percent">0%</span></div><div id="reveal" class="reveal-text" aria-label="Progressively revealing answer"></div><div class="progress-track"><div id="reveal-bar"></div></div></div>
+        <div class="controls"><button id="pause" class="secondary" aria-pressed="false">⏸ &nbsp; Pause reveal</button><span id="reveal-status">Think it through. You have a moment.</span></div>
+        <label class="answer-label" for="answer">YOUR RESPONSE</label>
+        <textarea id="answer" placeholder="Explain it in your own words…" rows="3" maxlength="1000"></textarea>
+        <div class="answer-actions"><button id="submit" class="primary">Check my answer <span>↗</span></button><button id="show" class="text-button">Show answer <span>→</span></button></div>
+        <p id="feedback" class="feedback" role="status" hidden></p>
+        <div id="result" class="result" hidden><span class="card-label">THE FULL ANSWER</span><p id="full-answer"></p><span class="card-label">FROM YOUR MATERIAL</span><blockquote id="excerpt"></blockquote><button id="next" class="primary">Next question <span>↗</span></button></div>
+      </div>
+    </section>
+
+    <section id="finish" class="stage" hidden><div class="eyebrow">SESSION COMPLETE ✳</div><h1>You did the<br><em>remembering.</em></h1><p id="summary" class="intro"></p><button class="primary restart">Review another passage <span>↗</span></button></section>
+  </main>
+  <footer>Built for active recall · Inspired by progressive support · <a href="https://enlumen.eu/en/" target="_blank" rel="noopener noreferrer">About the approach ↗</a></footer>
+</body>
+</html>
